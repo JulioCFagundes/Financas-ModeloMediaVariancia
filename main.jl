@@ -1,4 +1,4 @@
-#%%
+
 using DataFrames
 using CSV
 using Statistics
@@ -6,7 +6,7 @@ using LinearAlgebra
 using Ipopt
 using Plots
 using JuMP
-IPCA = CSV.read("C:\\Users\\User\\Desktop\\pythonProject1\\Tesouro IPCA+ com Juros Semestrais Vencimento em 15_05_2055 - Visão Geral.csv", DataFrame,  select=[6])
+
 VALE3 = CSV.read("C:\\Users\\User\\Desktop\\pythonProject1\\VALE3.csv", DataFrame, select = [4])
 AZUL4 = CSV.read("C:\\Users\\User\\Desktop\\pythonProject1\\AZUL4.csv", DataFrame, select = [4])
 BBDC4 = CSV.read("C:\\Users\\User\\Desktop\\pythonProject1\\BBDC4.csv", DataFrame, select = [4])
@@ -76,13 +76,10 @@ D[:,22] = conv(GOLL4)
 Dm = zeros(length(IBOV[:,1]))
 Dm[:,1] = conv2(IBOV)
 
-#variação do ativo livre de risco
-Ativo_livre = zeros(length(IPCA[:,1]))
-Ativo_livre[:, 1] = conv2(IPCA)
 
 #matriz com os retornos médios dos ativos, sendo, a primeira => GOLL4, segunda linha => PETR3, terceira linha => OIBR3, quarta linha => VALE3
 R = mean(D, dims = 1)[:]
-
+Rf = 10/(100*12) #peguei valor de um título préfixado com 10% a.a
 #variação média do mercado
 Rm = float(mean(Dm, dims = 1))
 #matriz de Covariância entre os ativos:
@@ -95,8 +92,7 @@ ativo. Portanto, tirando a raíz da diagonal obtemos o risco de cada ativo.
 #Matriz com as ações, o retorno médio e a variância das ações
 Matriz_resumo = [ACOES R sqrt.(diag(Q))]
 print(Matriz_resumo)
-#%%
-#%%
+
 #Modelo de Markowitz sem venda a descoberto e sem ativo livre de risco
 function MarkowitzSVSA(Q, λ = 0.0)
     m = length(R)
@@ -113,12 +109,25 @@ function carteira(x, Q)
     return sqrt(x'*Q*x), dot(R, x)
 end
 #aplicando
-X = MarkowitzSVSA(Q)
-print(carteira(X, Q))
-print("A carteira X1 é:", X)
 
-#%%
-#%%
+X1 = MarkowitzSVSA(Q)
+σc1, R1 = carteira(X1, Q)
+print("O risco e o retorno da carteira um são: σc1 = $σc1, R1 = $R1 ")
+
+
+## Agora vamos fazer os plots!!
+plot(D, leg = false)
+retorno_tempo_1 = X1'*D'
+plot(retorno_tempo_1', leg = false)
+print(retorno_tempo_1)
+#ganho cumulativo das ações
+ganho_cumulativo = cumprod(1 .+ D', dims =1)
+ganho_cumulativo = [1.0; ganho_cumulativo]
+plot!(ganho_cumulativo, leg = false)
+#ganho cumulativo da carteira (dar uma olhada pq ta meio estranho)
+ganho_cumulativo_carteira = cumprod(1 .+ retorno_tempo_1', dims =1)
+ganho_cumulativo_carteira = [1.0; ganho_cumulativo_carteira]
+plot!(ganho_cumulativo, c =:green, leg = false)
 
 """
 
@@ -128,7 +137,8 @@ com venda a descoberto e sem ativo livre de risco
 """
 function MarkowitzCVSA(Q, λ = 0.0)
     m = length(R)
-    model = Model(Ipopt.Optimizer)
+    optimizer = optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0)
+    model = Model(optimizer)
     @variable(model, x[1:m])
     @objective(model, Min, dot(x, Q*x))
     @constraint(model, sum(x) == 1)
@@ -138,20 +148,25 @@ function MarkowitzCVSA(Q, λ = 0.0)
 end
 #aplicando
 X2 = MarkowitzCVSA(Q)
-print(carteira(X2, Q), "\n")
-print("A carteira X2 é:", X2)
+σc2, R2 = carteira(X2, Q)
+print("O Retorno e Risco da carteira X2 são: σc2 = $σc2, R2 = $R2\n")
+print("A proporção X2 para cada ativo é:", X2)
+retorno_tempo_2= X2'*D'
+print(retorno_tempo_2)
 
+ganho_cumulativo_carteira_2 = cumprod(retorno_tempo_2', dims = 1 )
+ganho_cumulativo_carteira_2 = [ganho_cumulativo_carteira_2]
+plot(ganho_cumulativo_carteira_2)
 """
 Aqui nós terminamos o modelo dois, com venda a descoberto e sem ativo livre de risco e começamos o modelo 3
 sem venda a descoberto mas com ativo livre de risco
 
 """
-#%%
-#%%
+
 
 function MarkowitzSVCA(Q, λ= 0.0)
     m = length(R)
-    Rf = mean(Ativo_livre)
+    Rf = 10/(100*12)
     model = Model(Ipopt.Optimizer)
     @variable(model, x[1:m] >= 0)
     @expression(model, expr1, R' * x)
@@ -163,41 +178,49 @@ function MarkowitzSVCA(Q, λ= 0.0)
 end
 #aplicando
 X3 = MarkowitzSVCA(Q)
-print(X3)
-σC3, rC3= carteira(X3, Q)
-print(R, σC3, rC3 )
-#%%
-#%%
+
+σc3, Rc3= carteira(X3, Q)
+print("O Retorno e o risco da carteira X3 são: σc3 = $σc3, Rc3 = $Rc3." )
+print("A proporção X3 para cada ativo é:", X3)
+retorno_tempo_3= X3'*D'
+print(retorno_tempo_3)
+
+ganho_cumulativo_carteira_3 = cumprod(retorno_tempo_3', dims = 1 )
+ganho_cumulativo_carteira_3 = [ganho_cumulativo_carteira_3]
+plot(ganho_cumulativo_carteira_3)
+
 
 """
 AQUI TERMINA O MODELO DE MARCOS UITZ COM ATIVO LIVRE DE RISCO MAS SEM VENDA A DESCOBERTO E COMEÇA O MODELO
 COM ATIVO LIVRE DE RISCO E COM VENDA A DESCOBERTO
 """
-
-function MarkowitzSVCA(Q, λ= 0.0)
-    m = length(R)
-    Rf = mean(Ativo_livre)
-    model = Model(Ipopt.Optimizer)
-    @variable(model, x[1:m])
-    @expression(model, expr1, R' * x)
-    @expression(model, expr2, x'*Q*x)
-    @NLobjective(model, Max, ((expr1 - Rf)/sqrt(expr2)))
-    @constraint(model, sum(x) == 1)
-    optimize!(model)
-    return value.(x)
+#Resolução por sistema linear. Temos que Qz = R - Rf
+Rf = mean(Ativo_livre)
+RF = ones(length(ACOES))
+X4 = zeros(length(ACOES))
+RF = Rf*RF
+z = Q\(R -RF)
+for i in 1:length(ACOES)
+    X4[i] = z[i]/sum(z)
 end
-#aplicando
-X4 = MarkowitzSVCA(Q)
-print("X está distribuído da seguinte forma: $X3 \n")
-σC4, rC4= carteira(X3, Q)
-print("Matriz retorno = $R \n σC3 =  $σC3 \n rC3 = $rC3" )
 
-#%%
+σc4, Rc4= carteira(X4, Q)
+print("O Retorno e o risco da carteira X4 são: σc4 = $σc4, Rc4 = $Rc4.")
+print("A proporção X4 para cada ativo é:", X4)
+retorno_tempo_4 = X4'*D'
+print(retorno_tempo_4)
+
+ganho_cumulativo_carteira_4 = cumprod(retorno_tempo_4', dims = 1 )
+ganho_cumulativo_carteira_4 = [ganho_cumulativo_carteira_4]
+plot(ganho_cumulativo_carteira_4)
+
+
 """
 
 MODELO ÍNDICE ÚNICO
 
 """
+
 #Definindo R médio das ações no tempo t (pode ser útil para analisar)
 
 Rit = zeros(length(D[:,1]), length(ACOES))
@@ -228,33 +251,100 @@ for i in 1:length(ACOES)
     βi[i] = σim[i]/σm
     αi[i] = R[i] - βi[i]*Rm
 end
+
+#Variância dos erros
+σe = zeros(length(ACOES))
+for i in 1:length(ACOES)
+    S = 0.0
+    for t in 1: length(D[:,1])
+        S += (D[t,i] - (αi[i] +βi[i]*Dm[t]))^2
+    end
+    σe[i] = S/length(D[:,1])
+end
+σe
 #covariância dos ativos
 
 σij = zeros(length(ACOES),length(ACOES))
 for i in 1:length(ACOES)
     for j in 1:length(ACOES)
-        σij[i,j] = βi[i]*βi[j]*σm
+        if i == j
+            σij[i,j] = βi[i]*βi[j]*σm + σe[i]
+        else
+            σij[i,j] = βi[i]*βi[j]*σm
+        end  
     end
 end
 
 #Definindo o X da carteira de índice único sem venda a descoberto
-X = MarkowitzSVSA()
-βc = 0
-αc = 0
-for i in 1:length(X)
-    αc += X[i]*αi[i]
-    βc += βi[i]*X[i]
+Xiu1 = MarkowitzSVSA(σij)
+
+
+#alpha e beta da carteira
+
+βc1 = 0
+αc1 = 0
+
+for i in 1:length(Xiu1)
+    αc1 = αc1 + Xiu1[i]*αi[i]
+    βc1 = βc1 + βi[i]*Xiu1[i]
 end
 #Retorno pela fórmula
-Rc = αc + βc*Rm
+Rciu1 = αc1 +βc1*Rm
+print("O Retorno e o Beta da carteira Xiu1 são: βc1 = $βc1, Riu1 = $Rciu1 .")
+print("A proporção Xiu1 para cada ativo é:", Xiu1)
+retorno_tempo_iu1 = Xiu1'*D'
+print(retorno_tempo_iu1)
 
-#Retorno e risco pela função carteira
-σc, Rc1 = carteira(X, σij)
-print("σc = $σc, Rc1 = $Rc1")
- #note que a diferença dos retornos foi na casa 10^-16
- print(X)
- #podem haver números negativos, mas são tão pequenos que podemos desconsiderar
- 
+ganho_cumulativo_carteira_iu1 = cumprod(retorno_tempo_iu1', dims = 1 )
+ganho_cumulativo_carteira_iu1 = [1.0; ganho_cumulativo_carteira_iu1]
+plot(ganho_cumulativo_carteira_iu1)
+
  #carteira de índice único com venda a descoberto
-x = MarkowitzCVSA(σij)
-print(x, "\n $(sum(x))")
+Xiu2 = MarkowitzCVSA(σij)
+sqrt(Xiu2' * σij * Xiu2)
+#alpha e beta da carteira
+βc2 = 0
+αc2 = 0
+for i in 1:length(Xiu2)
+    αc2 += Xiu2[i]*αi[i]
+    βc2 += βi[i]*Xiu2[i]
+end
+#Retorno pela fórmula
+Rciu2 = αc2 + βc2*Rm
+print("O Retorno e o Beta da carteira Xiu2 são: βc2 = $βc2, Riu2 = $Rciu2.")
+print("A proporção Xiu1 para cada ativo é:", Xiu2)
+
+#Retorno por tempo de cada ação
+retorno_tempo_iu2 = Xiu2'*D'
+print(retorno_tempo_iu2)
+
+#Retorno comulativo da carteira
+ganho_cumulativo_carteira_iu2 = cumprod(retorno_tempo_iu2', dims = 1 )
+ganho_cumulativo_carteira_iu2 = [1.0; ganho_cumulativo_carteira_iu2]
+plot(ganho_cumulativo_carteira_iu2)
+
+
+
+
+
+
+
+
+
+#Variância individual de cada ação.
+σ = zeros(length(ACOES))
+auxiliar = zeros(length(ACOES))
+for i in 1:length(R)
+
+
+    for j in 1:length(D[:,1])
+        auxiliar[i] += (D[j,i] - R[i])^2
+
+    end
+    σ[i] = auxiliar[i]/length(D[:,1])
+    
+end
+
+#Pode ser calculada também da seguinte maneira (bem mais compacta)
+Var = diag(Q)
+Desvio_padrão = sqrt.(Var)
