@@ -1,4 +1,6 @@
-# Modelos_Media_Variancia_-financas-
+# Modelos Media Variancia
+
+
 Código com modelos de Marcowitz com e sem venda a descoberto, com e sem ativo livre de risco e modelo de índice único.
 
 Códigos feitos a partir de funções e testados com as ações indicadas no início do script.
