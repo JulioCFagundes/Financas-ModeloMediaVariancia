@@ -84,9 +84,9 @@ Rf = 10/(100*12) #peguei valor de um título préfixado com 10% a.a
 Rm = float(mean(Dm, dims = 1))
 #matriz de Covariância entre os ativos:
 Q = cov(D)
-"""Podemos colocar corrected = false para utilizar todos os n períodos, mas na prática geralmente usamos n-1 
-períodos. (vai de pessoa para pessoa). Note também que, na matriz de covariâncias, a diagonal é a variação do
-ativo. Portanto, tirando a raíz da diagonal obtemos o risco de cada ativo. 
+"""
+Note que na matriz de covariâncias, a diagonal é a variação do
+ativo. Portanto, tirando a raíz da diagonal obtemos o risco (desvio padrão) de cada ativo. 
 """
 
 #Matriz com as ações, o retorno médio e a variância das ações
@@ -191,7 +191,7 @@ plot(ganho_cumulativo_carteira_3)
 
 
 """
-AQUI TERMINA O MODELO DE MARCOS UITZ COM ATIVO LIVRE DE RISCO MAS SEM VENDA A DESCOBERTO E COMEÇA O MODELO
+AQUI TERMINA O MODELO COM ATIVO LIVRE DE RISCO MAS SEM VENDA A DESCOBERTO E COMEÇA O MODELO
 COM ATIVO LIVRE DE RISCO E COM VENDA A DESCOBERTO
 """
 #Resolução por sistema linear. Temos que Qz = R - Rf
