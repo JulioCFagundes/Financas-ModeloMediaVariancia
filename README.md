@@ -1,4 +1,4 @@
-# Modelos Media Variancia
+# Modelos Media Variância
 
 
 Código com modelos de Marcowitz com e sem venda a descoberto, com e sem ativo livre de risco e modelo de índice único.
